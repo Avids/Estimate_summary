@@ -53,11 +53,11 @@ export const SYSTEM_MAPPINGS: { category: string; keywords: string[] }[] = [
   },
   {
     category: 'CABLE TRAY & SUPPORT',
-    keywords: ['Tray', 'Ladder', 'Strut', 'Channel', 'Drop-in', 'Beam Clamp']
+    keywords: ['Tray', 'Ladder', 'Strut', 'Channel', 'Drop-in', 'Beam Clamp', 'T-ROD']
   },
   {
     category: 'GROUNDING & BONDING',
-    keywords: ['Ground', 'Bond', 'Copper', 'Bare', 'Lug', 'Cadweld', 'Rod', 'Bus Bar']
+    keywords: ['Ground', 'Bond', 'Copper', 'Bare', 'Lug', 'Cadweld', 'Rod', 'Bus Bar', 'CRIMP']
   },
   {
     category: 'TEST & COMMISSIONING',
@@ -81,7 +81,7 @@ export const SYSTEM_MAPPINGS: { category: string; keywords: string[] }[] = [
   },
   {
     category: 'DISTRIBUTION',
-    keywords: ['Panel', 'Breaker', 'Transformer', 'Switchgear', 'Bus', 'Disconnect']
+    keywords: ['Panel', 'Breaker', 'Transformer', 'Switchgear', 'Bus', 'Disconnect', 'TECK', 'XMER']
   },
   {
     category: 'POWER SYSTEMS',
