@@ -29,8 +29,9 @@ export interface ParseResult {
 export const WBS_CATEGORIES = [
   'CIVIL & SITE WORKS',
   'PREMIUM & OT LABOR',
-  'CABLE TRAY & SUPPORT',
+  'RACEWAYS (TRAYS & LADDER)',
   'GROUNDING & BONDING',
+  'SUPPORTS & FASTENERS',
   'TEST & COMMISSIONING',
   'FIRE ALARM',
   'COMMUNICATION',
@@ -52,12 +53,16 @@ export const SYSTEM_MAPPINGS: { category: string; keywords: string[] }[] = [
     keywords: ['OT', 'Overtime', 'Premium', 'Shift', 'Weekend', 'After Hours']
   },
   {
-    category: 'CABLE TRAY & SUPPORT',
-    keywords: ['Tray', 'Ladder', 'Strut', 'Channel', 'Drop-in', 'Beam Clamp', 'T-ROD']
+    category: 'RACEWAYS (TRAYS & LADDER)',
+    keywords: ['Tray', 'Ladder', 'Wireway', 'Basket']
   },
   {
     category: 'GROUNDING & BONDING',
     keywords: ['Ground', 'Bond', 'Copper', 'Bare', 'Lug', 'Cadweld', 'Rod', 'Bus Bar', 'CRIMP']
+  },
+  {
+    category: 'SUPPORTS & FASTENERS',
+    keywords: ['Strut', 'Hanger', 'Beam Clamp', 'Rod', 'Anchor', 'Nut', 'Bolt', 'T-ROD', 'Fastener']
   },
   {
     category: 'TEST & COMMISSIONING',
