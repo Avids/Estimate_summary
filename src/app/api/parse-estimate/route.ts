@@ -76,7 +76,9 @@ export async function POST(req: NextRequest) {
       }
 
       // Normalize all unicode dashes, en-dashes, and minus signs to standard hyphen
-      const cleanPdfText = pdfText.replace(/[–—−]/g, '-');
+      let cleanPdfText = pdfText.replace(/[–—−]/g, '-');
+      // Detach attached unit letters (e.g. "834.68C" -> "834.68 C", "8.70C" -> "8.70 C")
+      cleanPdfText = cleanPdfText.replace(/(\d*\.?\d+)([CMEcme])\b/g, '$1 $2');
       const lines = cleanPdfText.split('\n');
       let idCounter = 1;
 
@@ -266,6 +268,67 @@ export async function POST(req: NextRequest) {
 
               lastRowEnd = i + 4;
               i += 3;
+            }
+          }
+        }
+
+        // 4. Absolute Ultimate Right-to-Left Line Token Fallback (for arbitrary merged/unmerged table formats)
+        if (lineItems.length === 0) {
+          for (const line of lines) {
+            const trimmed = line.trim();
+            if (!trimmed || trimmed.length < 5) continue;
+            if (trimmed.toLowerCase().startsWith('project') || trimmed.toLowerCase().startsWith('description') || trimmed.toLowerCase().startsWith('totals')) continue;
+
+            const tTokens = trimmed.split(/\s+/);
+            const numTokens: string[] = [];
+            let descEndIndex = tTokens.length;
+
+            // Scan backwards from right to left collecting all numbers
+            for (let j = tTokens.length - 1; j >= 0; j--) {
+              const tk = tTokens[j];
+              if (isUnitLetter(tk) || tk.toUpperCase() === 'EACH' || tk.toUpperCase() === 'LOT' || tk.toUpperCase() === 'MFT') {
+                continue;
+              }
+              if (isNumeric(tk)) {
+                numTokens.unshift(tk);
+                descEndIndex = j;
+              } else {
+                // Hit a non-number / non-unit word. This marks the end of the description!
+                break;
+              }
+            }
+
+            if (numTokens.length >= 3) {
+              const descTokens = tTokens.slice(0, descEndIndex);
+              if (descTokens.length > 0 && /^\d+$/.test(descTokens[0])) {
+                descTokens.shift();
+              }
+
+              const description = descTokens.join(' ').trim();
+              if (description.length > 1) {
+                // In typical estimate formats, the rightmost number is Total Hours or Total Material
+                // If 5 numbers gathered: Qty, Price, TotalMat, Labor, TotalHrs
+                let qty = parseNum(numTokens[0]);
+                let totalMat = parseNum(numTokens[numTokens.length - 3] || numTokens[numTokens.length - 2]);
+                let labor = parseNum(numTokens[numTokens.length - 1]);
+
+                if (numTokens.length === 4) {
+                  // Qty, Labor, Price, TotalMat
+                  qty = parseNum(numTokens[0]);
+                  totalMat = parseNum(numTokens[3]);
+                  labor = parseNum(numTokens[1]);
+                }
+
+                lineItems.push({
+                  id: `pdf-rtl-${idCounter++}`,
+                  description,
+                  quantity: qty,
+                  laborHours: Number(labor.toFixed(2)),
+                  unitPrice: parseNum(numTokens[1]),
+                  materialValue: totalMat,
+                  category: 'Unmapped'
+                });
+              }
             }
           }
         }
