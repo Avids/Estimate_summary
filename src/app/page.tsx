@@ -10,7 +10,7 @@ import * as XLSX from 'xlsx';
 const MOCK_SAMPLE_ITEMS: LineItem[] = [
   { id: 'demo-civil', description: 'Excavation & Trenching for Feeder', quantity: 1, laborHours: 24, unitPrice: 3500, materialValue: 3500, category: 'CIVIL & SITE WORKS' },
   { id: 'demo-ot', description: 'Weekend Overtime Premium Labor', quantity: 1, laborHours: 16, unitPrice: 1500, materialValue: 1500, category: 'PREMIUM & OT LABOR' },
-  { id: 'demo-tray', description: '12in Aluminum Cable Tray Ladder 12ft', quantity: 40, laborHours: 32, unitPrice: 110, materialValue: 4400, category: 'CABLE TRAY & SUPPORT' },
+  { id: 'demo-tray', description: '12in Aluminum Cable Tray Ladder 12ft', quantity: 40, laborHours: 32, unitPrice: 110, materialValue: 4400, category: 'RACEWAYS (TRAYS & LADDER)' },
   { id: 'demo-ground', description: 'Bare Copper Ground Wire #4/0 AWG', quantity: 600, laborHours: 18, unitPrice: 4.25, materialValue: 2550, category: 'GROUNDING & BONDING' },
   { id: 'demo-1', description: 'FA Verification & Testing', quantity: 1, laborHours: 8, unitPrice: 1200, materialValue: 1200, category: 'TEST & COMMISSIONING' },
   { id: 'demo-2', description: 'Smoke Detector Head', quantity: 45, laborHours: 12, unitPrice: 85, materialValue: 3825, category: 'FIRE ALARM' },
