@@ -1,9 +1,10 @@
 'use client';
 
 import React, { useState } from 'react';
-import { Upload, FileText, CheckCircle, RefreshCw, AlertCircle, Eye, ArrowRight, BookOpen, Layers, Check, Database, Sparkles } from 'lucide-react';
+import { Upload, FileText, CheckCircle, RefreshCw, AlertCircle, Eye, ArrowRight, BookOpen, Layers, Check, Database, Sparkles, Download } from 'lucide-react';
 import { ParseResult, LineItem, WBS_CATEGORIES, aggregateEstimate, assignLearnedMapping } from '@/lib/engine';
 import { motion, AnimatePresence } from 'framer-motion';
+import * as XLSX from 'xlsx';
 
 // Mock sample items for instant 1-click testing without file upload
 const MOCK_SAMPLE_ITEMS: LineItem[] = [
@@ -32,7 +33,7 @@ export default function Home() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isScanned, setIsScanned] = useState(false);
-  
+
   // App state
   const [parseData, setParseData] = useState<ParseResult | null>(null);
   const [selectedSystemForModal, setSelectedSystemForModal] = useState<string | null>(null);
@@ -85,7 +86,7 @@ export default function Home() {
 
     setTimeout(() => {
       const aggregated = aggregateEstimate(
-        JSON.parse(JSON.stringify(MOCK_SAMPLE_ITEMS)), 
+        JSON.parse(JSON.stringify(MOCK_SAMPLE_ITEMS)),
         type === 'pdf' ? 'Sample_Electrical_Estimate.pdf' : 'Sample_Electrical_Estimate.xlsx'
       );
       setParseData(aggregated);
@@ -132,6 +133,51 @@ export default function Home() {
     });
   };
 
+  const handleExportExcel = () => {
+    if (!parseData) return;
+
+    // 1. Create Summary Sheet
+    const summaryRows = parseData.rollups.map(r => ({
+      'WBS System / Industry Category': r.category,
+      'Line Items Count': r.itemCount,
+      'Total Labor Hours': Number(r.laborHours.toFixed(2)),
+      'Total Material Value ($)': Number(r.materialValue.toFixed(2))
+    }));
+
+    const totalMat = parseData.rollups.reduce((sum, r) => sum + r.materialValue, 0);
+    const totalHrs = parseData.rollups.reduce((sum, r) => sum + r.laborHours, 0);
+    const totalItems = parseData.rollups.reduce((sum, r) => sum + r.itemCount, 0);
+
+    summaryRows.push({
+      'WBS System / Industry Category': 'GRAND TOTALS',
+      'Line Items Count': totalItems,
+      'Total Labor Hours': Number(totalHrs.toFixed(2)),
+      'Total Material Value ($)': Number(totalMat.toFixed(2))
+    });
+
+    const wsSummary = XLSX.utils.json_to_sheet(summaryRows);
+
+    // 2. Create All Line Items Sheet
+    const itemRows = parseData.rawItems.map(item => ({
+      'ID': item.id,
+      'WBS System': item.category,
+      'Description': item.description,
+      'Quantity': item.quantity,
+      'Unit Price ($)': item.unitPrice,
+      'Material Total ($)': item.materialValue,
+      'Labor Hours': item.laborHours,
+      'Manually Mapped': item.isManuallyMapped ? 'Yes' : 'No'
+    }));
+
+    const wsItems = XLSX.utils.json_to_sheet(itemRows);
+
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, wsSummary, 'WBS Summary');
+    XLSX.utils.book_append_sheet(wb, wsItems, 'All Line Items');
+
+    XLSX.writeFile(wb, `${parseData.fileName.replace(/\.[^/.]+$/, '')}_WBS_Export.xlsx`);
+  };
+
   return (
     <div className="min-h-screen bg-slate-900 text-slate-100 flex flex-col font-sans selection:bg-teal-500 selection:text-white">
       {/* Top Banner / Navigation */}
@@ -159,13 +205,13 @@ export default function Home() {
 
       {/* Main Workspace */}
       <main className="flex-1 p-6 md:p-8 max-w-7xl mx-auto w-full space-y-8">
-        
+
         {/* Intro / Uploader / Demo loaders */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Uploader Card */}
           <div className="lg:col-span-2 bg-slate-800/50 backdrop-blur-sm border border-slate-700/70 rounded-2xl p-6 shadow-xl relative overflow-hidden flex flex-col justify-between">
             <div className="absolute top-0 right-0 w-64 h-64 bg-teal-500/5 rounded-full blur-3xl pointer-events-none" />
-            
+
             <div>
               <h2 className="text-lg font-bold text-white mb-2 flex items-center gap-2">
                 <Upload className="w-5 h-5 text-teal-400" />
@@ -176,10 +222,10 @@ export default function Home() {
               </p>
 
               <label className="border-2 border-dashed border-slate-600 hover:border-teal-500/80 bg-slate-900/50 hover:bg-slate-900/80 transition-all duration-200 rounded-xl p-8 flex flex-col items-center justify-center text-center cursor-pointer group">
-                <input 
-                  type="file" 
-                  className="hidden" 
-                  accept=".pdf,.xlsx,.xls,.csv" 
+                <input
+                  type="file"
+                  className="hidden"
+                  accept=".pdf,.xlsx,.xls,.csv"
                   onChange={(e) => {
                     if (e.target.files && e.target.files[0]) {
                       setFile(e.target.files[0]);
@@ -204,7 +250,7 @@ export default function Home() {
                   <p>{error}</p>
                   {isScanned && (
                     <div className="pt-2 flex items-center space-x-3">
-                      <button 
+                      <button
                         onClick={() => handleDemoLoad('excel')}
                         className="px-3 py-1 bg-red-500 hover:bg-red-600 text-white rounded-lg text-xs font-semibold transition-all shadow"
                       >
@@ -231,8 +277,8 @@ export default function Home() {
             </div>
 
             <div className="space-y-4">
-              <button 
-                onClick={() => handleDemoLoad('pdf')} 
+              <button
+                onClick={() => handleDemoLoad('pdf')}
                 disabled={isLoading}
                 className="w-full py-3 px-4 bg-slate-700/60 hover:bg-teal-600/20 hover:border-teal-500/50 border border-slate-600 rounded-xl flex items-center justify-between text-left transition-all duration-200 group shadow"
               >
@@ -248,8 +294,8 @@ export default function Home() {
                 <ArrowRight className="w-4 h-4 text-slate-400 group-hover:text-teal-400 group-hover:translate-x-1 transition-all" />
               </button>
 
-              <button 
-                onClick={() => handleDemoLoad('excel')} 
+              <button
+                onClick={() => handleDemoLoad('excel')}
                 disabled={isLoading}
                 className="w-full py-3 px-4 bg-slate-700/60 hover:bg-teal-600/20 hover:border-teal-500/50 border border-slate-600 rounded-xl flex items-center justify-between text-left transition-all duration-200 group shadow"
               >
@@ -286,9 +332,9 @@ export default function Home() {
         {/* Staging UI Dashboard */}
         {parseData && !isLoading && (
           <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3 }} className="space-y-8">
-            
+
             {/* Reconciliation Grand Total Banner */}
-            <div className="bg-slate-800/80 border border-slate-700 rounded-2xl p-6 shadow-xl flex flex-col md:flex-row justify-between items-center gap-4">
+            <div className="bg-slate-800/80 border border-slate-700 rounded-2xl p-6 shadow-xl flex flex-col lg:flex-row justify-between items-center gap-6">
               <div>
                 <p className="text-xs font-semibold tracking-wider text-teal-400 uppercase mb-1">Source Document Reconciliation</p>
                 <h3 className="text-xl font-bold text-white flex items-center gap-2">
@@ -299,21 +345,38 @@ export default function Home() {
                 </h3>
               </div>
 
-              <div className="flex items-center space-x-6">
+              <div className="flex flex-wrap items-center gap-6 justify-end">
+                <div className="text-right border-r border-slate-700 pr-6">
+                  <p className="text-xs text-slate-400 font-medium">Total Labor Hours</p>
+                  <p className="text-2xl font-black text-teal-300 tracking-tight">
+                    {parseData.rollups.reduce((sum, r) => sum + r.laborHours, 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} hrs
+                  </p>
+                </div>
+
                 <div className="text-right">
-                  <p className="text-xs text-slate-400 font-medium">Reconciled Grand Total</p>
+                  <p className="text-xs text-slate-400 font-medium">Reconciled Material Total</p>
                   <p className="text-2xl font-black text-emerald-400 tracking-tight">
                     ${parseData.totalProjectValue.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                   </p>
                 </div>
 
-                <button 
-                  onClick={handleConfirmRecords}
-                  className="px-6 py-3 bg-teal-500 hover:bg-teal-400 text-slate-900 font-bold rounded-xl flex items-center space-x-2 shadow-lg shadow-teal-500/20 hover:shadow-teal-500/40 transition-all transform hover:-translate-y-0.5 active:translate-y-0"
-                >
-                  <CheckCircle className="w-5 h-5" />
-                  <span>Confirm & Generate WBS / SOV</span>
-                </button>
+                <div className="flex items-center gap-3">
+                  <button
+                    onClick={handleExportExcel}
+                    className="px-4 py-3 bg-slate-700 hover:bg-teal-500 hover:text-slate-900 text-white font-bold rounded-xl flex items-center space-x-2 shadow transition-all"
+                  >
+                    <Download className="w-5 h-5 text-teal-400 group-hover:text-slate-900" />
+                    <span>Export WBS Excel</span>
+                  </button>
+
+                  <button
+                    onClick={handleConfirmRecords}
+                    className="px-6 py-3 bg-teal-500 hover:bg-teal-400 text-slate-900 font-bold rounded-xl flex items-center space-x-2 shadow-lg shadow-teal-500/20 hover:shadow-teal-500/40 transition-all transform hover:-translate-y-0.5 active:translate-y-0"
+                  >
+                    <CheckCircle className="w-5 h-5" />
+                    <span>Confirm SOV</span>
+                  </button>
+                </div>
               </div>
             </div>
 
@@ -333,7 +396,7 @@ export default function Home() {
                       <p className="text-sm text-slate-300">
                         8 WBS headers successfully registered into project accounting. Unmapped string correlations have been committed to <span className="font-semibold text-teal-300">User_Learned_Mappings</span>.
                       </p>
-                      
+
                       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 pt-2">
                         {confirmedRecords.sovRecords.map((sov: any) => (
                           <div key={sov.system} className="bg-slate-900/60 p-3 rounded-xl border border-slate-700/60">
@@ -452,8 +515,8 @@ export default function Home() {
                         </div>
 
                         <div className="flex items-center space-x-2">
-                          <select 
-                            value={selectedCategoryMap[item.id] || ''} 
+                          <select
+                            value={selectedCategoryMap[item.id] || ''}
                             onChange={(e) => setSelectedCategoryMap({ ...selectedCategoryMap, [item.id]: e.target.value })}
                             className="bg-slate-800 border border-slate-600 text-xs text-white rounded-lg px-3 py-2 focus:outline-none focus:border-teal-500"
                           >
@@ -463,7 +526,7 @@ export default function Home() {
                             ))}
                           </select>
 
-                          <button 
+                          <button
                             onClick={() => {
                               if (selectedCategoryMap[item.id]) {
                                 handleAssignCategory(item.id, item.description, selectedCategoryMap[item.id]);
@@ -491,10 +554,10 @@ export default function Home() {
       <AnimatePresence>
         {selectedSystemForModal && parseData && (
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm">
-            <motion.div 
-              initial={{ opacity: 0, scale: 0.95 }} 
-              animate={{ opacity: 1, scale: 1 }} 
-              exit={{ opacity: 0, scale: 0.95 }} 
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
               className="bg-slate-800 border border-slate-700 rounded-2xl w-full max-w-3xl overflow-hidden shadow-2xl flex flex-col max-h-[85vh]"
             >
               <div style={{ backgroundColor: '#37514E' }} className="px-6 py-4 flex justify-between items-center text-white">
@@ -502,7 +565,7 @@ export default function Home() {
                   <p className="text-xs font-semibold tracking-wider uppercase text-teal-300">WBS Line Item Review</p>
                   <h3 className="text-lg font-bold">{selectedSystemForModal}</h3>
                 </div>
-                <button 
+                <button
                   onClick={() => setSelectedSystemForModal(null)}
                   className="w-8 h-8 rounded-full bg-slate-900/40 hover:bg-slate-900/80 flex items-center justify-center text-white font-bold transition-all"
                 >
@@ -541,7 +604,7 @@ export default function Home() {
 
               <div className="px-6 py-4 bg-slate-900 border-t border-slate-700 flex justify-between items-center text-xs text-slate-400 font-mono">
                 <span>Total Items: {parseData.rollups.find(r => r.category === selectedSystemForModal)?.itemCount}</span>
-                <button 
+                <button
                   onClick={() => setSelectedSystemForModal(null)}
                   className="px-4 py-2 bg-slate-700 hover:bg-slate-600 text-white font-bold rounded-lg transition-all"
                 >
