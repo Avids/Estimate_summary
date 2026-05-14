@@ -63,7 +63,7 @@ export const SYSTEM_MAPPINGS: { category: string; keywords: string[] }[] = [
   },
   {
     category: 'SUPPORTS & FASTENERS',
-    keywords: ['Strut', 'Hanger', 'Beam Clamp', 'Rod', 'Anchor', 'Nut', 'Bolt', 'T-ROD', 'Fastener']
+    keywords: ['Strut', 'Hanger', 'Clamp', 'Rod', 'T-Rod', 'Anchor', 'Nut', 'Bolt', 'Jack Chain', 'S-Hook', 'Screw', 'Washer']
   },
   {
     category: 'TEST & COMMISSIONING',
@@ -91,11 +91,11 @@ export const SYSTEM_MAPPINGS: { category: string; keywords: string[] }[] = [
   },
   {
     category: 'POWER SYSTEMS & DEVICES',
-    keywords: ['Receptacle', 'Outlet', 'Plug', 'Motor', 'Device Box', '1104']
+    keywords: ['Receptacle', 'Outlet', 'Plug', 'Motor', 'Splitter', 'Decora', 'GFI', 'Dup Rec', 'Device Box', 'Plate', 'Plaster Ring']
   },
   {
     category: 'JUNCTION BOXES & ENCLOSURES',
-    keywords: ['JB', 'NEMA', 'Pull Box', 'Octagon', '4-11/16', 'Splitter', 'Enclosure']
+    keywords: ['JB', 'NEMA', 'Pull Box', 'SQ Box', 'Oct Box', 'Enclosure', '4-11/16']
   },
   {
     category: 'CONDUITS, WIRES, CABLES & TERMINATIONS',
