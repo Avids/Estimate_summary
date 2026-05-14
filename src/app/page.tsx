@@ -22,9 +22,9 @@ const MOCK_SAMPLE_ITEMS: LineItem[] = [
   { id: 'demo-9', description: 'Duplex Receptacle 15A', quantity: 200, laborHours: 35, unitPrice: 8.50, materialValue: 1700, category: 'POWER SYSTEMS' },
   { id: 'demo-10', description: '3/4in EMT Conduit 10ft', quantity: 300, laborHours: 60, unitPrice: 12.00, materialValue: 3600, category: 'BRANCH WIRING' },
   { id: 'demo-11', description: 'RW90 Copper Wire #12 AWG', quantity: 2500, laborHours: 45, unitPrice: 0.85, materialValue: 2125, category: 'BRANCH WIRING' },
-  { id: 'demo-12', description: 'S-Hooks Fasteners', quantity: 500, laborHours: 4, unitPrice: 0.45, materialValue: 225, category: 'Unmapped' },
-  { id: 'demo-13', description: 'Polytwine Pull String 6500ft', quantity: 2, laborHours: 2, unitPrice: 45, materialValue: 90, category: 'Unmapped' },
-  { id: 'demo-14', description: 'Unspecified Mounting Brackets', quantity: 100, laborHours: 8, unitPrice: 5.50, materialValue: 550, category: 'Unmapped' }
+  { id: 'demo-12', description: 'S-Hooks Fasteners', quantity: 500, laborHours: 4, unitPrice: 0.45, materialValue: 225, category: 'GENERAL ITEMS' },
+  { id: 'demo-13', description: 'Polytwine Pull String 6500ft', quantity: 2, laborHours: 2, unitPrice: 45, materialValue: 90, category: 'GENERAL ITEMS' },
+  { id: 'demo-14', description: 'Unspecified Hardware Brackets', quantity: 100, laborHours: 8, unitPrice: 5.50, materialValue: 550, category: 'Unmapped' }
 ];
 
 export default function Home() {
