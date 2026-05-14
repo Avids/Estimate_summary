@@ -38,8 +38,9 @@ export const WBS_CATEGORIES = [
   'SECURITY',
   'LIGHTING & CONTROLS',
   'DISTRIBUTION',
-  'POWER SYSTEMS',
-  'CONDUITS, WIRES & CABLES',
+  'POWER SYSTEMS & DEVICES',
+  'JUNCTION BOXES & ENCLOSURES',
+  'CONDUITS, WIRES, CABLES & TERMINATIONS',
   'GENERAL ITEMS'
 ];
 
@@ -89,8 +90,12 @@ export const SYSTEM_MAPPINGS: { category: string; keywords: string[] }[] = [
     keywords: ['Panel', 'Breaker', 'Transformer', 'Switchgear', 'Bus', 'Disconnect', 'XMER']
   },
   {
-    category: 'POWER SYSTEMS',
-    keywords: ['Receptacle', 'Outlet', 'Plug', 'Motor', 'Splitter']
+    category: 'POWER SYSTEMS & DEVICES',
+    keywords: ['Receptacle', 'Outlet', 'Plug', 'Motor', 'Device Box', '1104']
+  },
+  {
+    category: 'JUNCTION BOXES & ENCLOSURES',
+    keywords: ['JB', 'NEMA', 'Pull Box', 'Octagon', '4-11/16', 'Splitter', 'Enclosure']
   },
   {
     category: 'CONDUITS, WIRES, CABLES & TERMINATIONS',
@@ -135,7 +140,7 @@ export function classifyLineItem(description: string): string {
       const cleanKw = kw.toLowerCase();
       // Match short keywords as word boundaries so they don't trigger false positives inside other words
       // e.g. "ot" shouldn't match "total", "lug" shouldn't match "plug", "fa" shouldn't match "facp"
-      if (['fa', '105', 'led', 'bx', 'ot', 'lug', 'rod', 'bond', 'bus'].includes(cleanKw)) {
+      if (['fa', '105', 'led', 'bx', 'ot', 'lug', 'rod', 'bond', 'bus', 'jb'].includes(cleanKw)) {
         const regex = new RegExp(`\\b${cleanKw}\\b`, 'i');
         if (regex.test(cleanDesc)) {
           return mapping.category;
