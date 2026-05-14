@@ -27,83 +27,60 @@ export interface ParseResult {
 }
 
 export const WBS_CATEGORIES = [
-  'CIVIL & SITE WORKS',
-  'PREMIUM & OT LABOR',
-  'RACEWAYS (TRAYS & LADDER)',
-  'GROUNDING & BONDING',
-  'SUPPORTS & FASTENERS',
-  'TEST & COMMISSIONING',
-  'FIRE ALARM',
-  'COMMUNICATION',
-  'SECURITY',
-  'LIGHTING & CONTROLS',
-  'DISTRIBUTION',
-  'POWER SYSTEMS & DEVICES',
+  'FEEDERS & MAJOR RACEWAY',
+  'BRANCH WIRING & CONDUITS',
   'JUNCTION BOXES & ENCLOSURES',
-  'CONDUITS, WIRES, CABLES & TERMINATIONS',
-  'GENERAL ITEMS'
+  'RACEWAYS (TRAYS & LADDER)',
+  'SUPPORTS & FASTENERS',
+  'GROUNDING & BONDING',
+  'DISTRIBUTION',
+  'LIGHTING & CONTROLS',
+  'POWER SYSTEMS & DEVICES',
+  'TEST & COMMISSIONING',
+  'CIVIL & SITE WORKS',
+  'GENERAL'
 ];
 
 export const SYSTEM_MAPPINGS: { category: string; keywords: string[] }[] = [
   {
-    category: 'CIVIL & SITE WORKS',
-    keywords: ['Civil', 'Trench', 'Coring', 'Grout', 'Patch', 'Excavation', 'Scanning']
-  },
-  {
-    category: 'PREMIUM & OT LABOR',
-    keywords: ['OT', 'Overtime', 'Premium', 'Shift', 'Weekend', 'After Hours']
+    category: 'JUNCTION BOXES & ENCLOSURES',
+    keywords: ['JB', 'NEMA', 'Pull Box', 'Oct Box', '4in.SQ', 'Enclosure', 'Splitter']
   },
   {
     category: 'RACEWAYS (TRAYS & LADDER)',
-    keywords: ['Tray', 'Ladder', 'Wireway', 'Basket']
-  },
-  {
-    category: 'GROUNDING & BONDING',
-    keywords: ['Ground', 'Bond', 'Copper', 'Bare', 'Lug', 'Cadweld', 'Rod', 'Bus Bar', 'CRIMP']
+    keywords: ['Tray', 'Ladder', 'Wireway', 'Basket', 'J-Hook']
   },
   {
     category: 'SUPPORTS & FASTENERS',
-    keywords: ['Strut', 'Hanger', 'Clamp', 'Rod', 'T-Rod', 'Anchor', 'Nut', 'Bolt', 'Jack Chain', 'S-Hook', 'Screw', 'Washer']
+    keywords: ['Strut', 'Hanger', 'Clamp', 'Rod', 'T-Rod', 'Anchor', 'Nut', 'Bolt', 'Jack Chain', 'S-Hook']
   },
   {
-    category: 'TEST & COMMISSIONING',
-    keywords: ['Test', 'Megger', 'Verification', 'Commissioning', 'Certify', 'Hi-Pot']
-  },
-  {
-    category: 'FIRE ALARM',
-    keywords: ['FA', 'Smoke', 'Heat', 'Strobe', 'FACP', '105']
-  },
-  {
-    category: 'COMMUNICATION',
-    keywords: ['Data', 'Cat6', 'Fiber', 'Rack', 'Patch', 'Telecom', 'WiFi']
-  },
-  {
-    category: 'SECURITY',
-    keywords: ['CCTV', 'Camera', 'Access', 'Card Reader', 'Motion', 'DPS', 'Mag']
-  },
-  {
-    category: 'LIGHTING & CONTROLS',
-    keywords: ['Fixture', 'LED', 'Dimmer', 'Occupancy', 'Sensor', 'Switch', 'Driver']
+    category: 'GROUNDING & BONDING',
+    keywords: ['Ground', 'Bond', 'Copper', 'Bare', 'Lug', 'Cadweld', 'Rod']
   },
   {
     category: 'DISTRIBUTION',
-    keywords: ['Panel', 'Breaker', 'Transformer', 'Switchgear', 'Bus', 'Disconnect', 'XMER']
+    keywords: ['Panel', 'Breaker', 'Transformer', 'Switchgear', 'Disconnect']
+  },
+  {
+    category: 'LIGHTING & CONTROLS',
+    keywords: ['Fixture', 'LED', 'Dimmer', 'Sensor', 'Switch', 'Driver']
   },
   {
     category: 'POWER SYSTEMS & DEVICES',
-    keywords: ['Receptacle', 'Outlet', 'Plug', 'Motor', 'Splitter', 'Decora', 'GFI', 'Dup Rec', 'Device Box', 'Plate', 'Plaster Ring']
+    keywords: ['Receptacle', 'Outlet', 'Plug', 'Motor', 'Device Box', 'Plaster Ring', 'Cover Plate']
   },
   {
-    category: 'JUNCTION BOXES & ENCLOSURES',
-    keywords: ['JB', 'NEMA', 'Pull Box', 'SQ Box', 'Oct Box', 'Enclosure', '4-11/16']
+    category: 'TEST & COMMISSIONING',
+    keywords: ['Test', 'Megger', 'Verification', 'Label', 'Identification']
   },
   {
-    category: 'CONDUITS, WIRES, CABLES & TERMINATIONS',
-    keywords: ['EMT', 'BX', 'RW90', 'AC90', 'Conduit', 'Wire', 'CONN', 'TECK']
+    category: 'CIVIL & SITE WORKS',
+    keywords: ['Civil', 'Trench', 'Coring', 'Grout', 'Scanning', 'Excavation']
   },
   {
-    category: 'GENERAL ITEMS',
-    keywords: ['Fastener', 'Screw', 'Anchor', 'Bolt', 'Nut', 'Washer', 'Bracket', 'Hanger', 'Hook', 'String', 'Polytwine', 'General', 'S-Hook', 'Mounting']
+    category: 'GENERAL',
+    keywords: ['Premium', 'OT', 'Shift', 'Mobilization', 'Cleanup', 'Consumable']
   }
 ];
 
@@ -126,12 +103,38 @@ export function classifyLineItem(description: string): string {
     return userLearnedMappings[cleanDesc];
   }
 
-  // 2. Specific hardware overrides
-  if (cleanDesc.includes('disconnect switch')) {
-    return 'DISTRIBUTION';
-  }
-  if (cleanDesc.includes('dimmer') || cleanDesc.includes('toggle switch')) {
-    return 'LIGHTING & CONTROLS';
+  // 2. Branch vs Feeder priority logic
+  const isBX = /\bbx\b/i.test(cleanDesc) || /\bac90\b/i.test(cleanDesc);
+  if (isBX) return 'BRANCH WIRING & CONDUITS';
+
+  const isWireOrConduit = /conduit|wire|teck|emt|grc|pvc|ent|hdpe|lt|t90|rw90|rwu90|conn|coupling|elbow|bushing/i.test(cleanDesc);
+  if (isWireOrConduit) {
+    const normDesc = cleanDesc.replace(/in\b/gi, '"').replace(/\s+"/g, '"').replace(/awg/gi, '');
+    
+    const feederConduitSizes = ['1 1/2"', '1-1/2"', '1.5"', '2"', '2 1/2"', '2-1/2"', '2.5"', '3"', '3 1/2"', '3-1/2"', '3.5"', '4"', '5"', '6"'];
+    const feederWireSizes = ['#4', '#3', '#2', '#1', '1/0', '2/0', '3/0', '4/0'];
+    const feederMCM = ['250', '300', '350', '400', '500', '600', '700', '750', '800', '900', '1000'];
+
+    const hasFeederConduit = feederConduitSizes.some(s => normDesc.includes(s.toLowerCase()));
+    const hasFeederWire = feederWireSizes.some(s => normDesc.includes(s.toLowerCase())) || 
+                          feederMCM.some(s => new RegExp(`\\b${s}\\b`).test(normDesc));
+    
+    if (hasFeederConduit || hasFeederWire) {
+      return 'FEEDERS & MAJOR RACEWAY';
+    }
+
+    const branchConduitSizes = ['1/2"', '0.5"', '3/4"', '0.75"', '1"', '1 1/4"', '1-1/4"', '1.25"'];
+    const branchWireSizes = ['#14', '#12', '#10', '#8', '#6'];
+
+    const hasBranchConduit = branchConduitSizes.some(s => normDesc.includes(s.toLowerCase()));
+    const hasBranchWire = branchWireSizes.some(s => normDesc.includes(s.toLowerCase()));
+
+    if (hasBranchConduit || hasBranchWire) {
+      return 'BRANCH WIRING & CONDUITS';
+    }
+
+    // Default to branch if it contains wire/conduit keywords but no explicit size matched
+    return 'BRANCH WIRING & CONDUITS';
   }
 
   // 3. Hierarchy priority scan
@@ -139,8 +142,7 @@ export function classifyLineItem(description: string): string {
     for (const kw of mapping.keywords) {
       const cleanKw = kw.toLowerCase();
       // Match short keywords as word boundaries so they don't trigger false positives inside other words
-      // e.g. "ot" shouldn't match "total", "lug" shouldn't match "plug", "fa" shouldn't match "facp"
-      if (['fa', '105', 'led', 'bx', 'ot', 'lug', 'rod', 'bond', 'bus', 'jb'].includes(cleanKw)) {
+      if (['fa', '105', 'led', 'ot', 'lug', 'rod', 'bond', 'bus', 'jb'].includes(cleanKw)) {
         const regex = new RegExp(`\\b${cleanKw}\\b`, 'i');
         if (regex.test(cleanDesc)) {
           return mapping.category;
