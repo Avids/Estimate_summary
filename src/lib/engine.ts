@@ -38,7 +38,8 @@ export const WBS_CATEGORIES = [
   'LIGHTING & CONTROLS',
   'DISTRIBUTION',
   'POWER SYSTEMS',
-  'BRANCH WIRING'
+  'BRANCH WIRING',
+  'GENERAL ITEMS'
 ];
 
 export const SYSTEM_MAPPINGS: { category: string; keywords: string[] }[] = [
@@ -88,7 +89,11 @@ export const SYSTEM_MAPPINGS: { category: string; keywords: string[] }[] = [
   },
   {
     category: 'BRANCH WIRING',
-    keywords: ['EMT', 'BX', 'RW90', 'AC90', 'Conduit', 'Wire', 'CONN', 'POLYTWINE']
+    keywords: ['EMT', 'BX', 'RW90', 'AC90', 'Conduit', 'Wire', 'CONN']
+  },
+  {
+    category: 'GENERAL ITEMS',
+    keywords: ['Fastener', 'Screw', 'Anchor', 'Bolt', 'Nut', 'Washer', 'Bracket', 'Hanger', 'Hook', 'String', 'Polytwine', 'General', 'S-Hook', 'Mounting']
   }
 ];
 
