@@ -78,22 +78,29 @@ export async function POST(req: NextRequest) {
       const lines = pdfText.split('\n');
       let idCounter = 1;
 
-      // Regex matching for typical estimate lines: Description ... Qty ... Price ... Total
+      // Helper to check if a string is a numeric value (allowing negative sign, commas, and decimals)
+      const isNumeric = (str: string) => {
+        const clean = str.trim().replace(/,/g, '');
+        return !isNaN(parseFloat(clean)) && isFinite(Number(clean));
+      };
+
+      const parseNum = (str: string) => parseFloat(str.trim().replace(/,/g, '')) || 0;
+
+      // Helper to check if a string is a unit letter C, M, E
+      const isUnitLetter = (str: string) => {
+        const clean = str.trim().toUpperCase();
+        return clean === 'C' || clean === 'M' || clean === 'E';
+      };
+
+      // 1. Horizontal Scan
       for (const line of lines) {
         const trimmed = line.trim();
         if (!trimmed || trimmed.length < 5) continue;
         if (trimmed.toLowerCase().startsWith('project name') || trimmed.toLowerCase().startsWith('description')) continue;
         if (trimmed.toLowerCase().includes('totals') && trimmed.toLowerCase().startsWith('totals')) continue;
 
-        // Pattern 1: Equinix TR-06 format (with negative numbers, comma, decimals, and Ur letters C/M/E)
-        // e.g.: '1 1 1/2" EMT -600 834.68 C -5,008.08 8.70 C -52.20'
-        // Groups: 1=Qty, 2=NetPrice, 3=Unit1, 4=TotalMat, 5=LaborRate, 6=Unit2, 7=TotalHrs
         const equinixMatch = trimmed.match(/(-?[\d,]+\.?\d*)\s+(-?[\d,]+\.?\d*)\s+([A-Za-z]{1,4})\s+(-?[\d,]+\.?\d*)\s+(-?[\d,]+\.?\d*)\s+([A-Za-z]{1,4})\s+(-?[\d,]+\.?\d*)$/);
-
-        // Pattern 2: Standard 4 numbers (Qty, Labor, Price, Total) without letters
         const std4Match = trimmed.match(/(-?[\d,]+\.?\d*)\s+(-?[\d,]+\.?\d*)\s+(-?[\d,]+\.?\d*)\s+(-?[\d,]+\.?\d*)$/);
-
-        // Pattern 3: Standard 3 numbers (Qty, Price, Total)
         const std3Match = trimmed.match(/(-?[\d,]+\.?\d*)\s+(-?[\d,]+\.?\d*)\s+(-?[\d,]+\.?\d*)$/);
 
         let description = '';
@@ -106,14 +113,13 @@ export async function POST(req: NextRequest) {
         if (equinixMatch) {
           const fullMatch = equinixMatch[0];
           let rawDesc = trimmed.substring(0, trimmed.indexOf(fullMatch)).trim();
-          // Strip optional leading row number (e.g., "1 ", "25 ")
           rawDesc = rawDesc.replace(/^\d+\s+/, '');
 
           if (rawDesc.length > 2 && !rawDesc.toLowerCase().includes('totals')) {
-            qty = parseFloat(equinixMatch[1].replace(/,/g, '')) || 0;
-            price = parseFloat(equinixMatch[2].replace(/,/g, '')) || 0;
-            totalMat = parseFloat(equinixMatch[4].replace(/,/g, '')) || 0;
-            labor = parseFloat(equinixMatch[7].replace(/,/g, '')) || 0; // Total labor hours
+            qty = parseNum(equinixMatch[1]);
+            price = parseNum(equinixMatch[2]);
+            totalMat = parseNum(equinixMatch[4]);
+            labor = parseNum(equinixMatch[7]);
             description = rawDesc;
             matched = true;
           }
@@ -123,10 +129,10 @@ export async function POST(req: NextRequest) {
           rawDesc = rawDesc.replace(/^\d+\s+/, '');
 
           if (rawDesc.length > 2 && !rawDesc.toLowerCase().includes('totals')) {
-            qty = parseFloat(std4Match[1].replace(/,/g, '')) || 0;
-            labor = parseFloat(std4Match[2].replace(/,/g, '')) || 0;
-            price = parseFloat(std4Match[3].replace(/,/g, '')) || 0;
-            totalMat = parseFloat(std4Match[4].replace(/,/g, '')) || 0;
+            qty = parseNum(std4Match[1]);
+            labor = parseNum(std4Match[2]);
+            price = parseNum(std4Match[3]);
+            totalMat = parseNum(std4Match[4]);
             description = rawDesc;
             matched = true;
           }
@@ -136,9 +142,9 @@ export async function POST(req: NextRequest) {
           rawDesc = rawDesc.replace(/^\d+\s+/, '');
 
           if (rawDesc.length > 2 && !rawDesc.toLowerCase().includes('totals')) {
-            qty = parseFloat(std3Match[1].replace(/,/g, '')) || 0;
-            price = parseFloat(std3Match[2].replace(/,/g, '')) || 0;
-            totalMat = parseFloat(std3Match[3].replace(/,/g, '')) || 0;
+            qty = parseNum(std3Match[1]);
+            price = parseNum(std3Match[2]);
+            totalMat = parseNum(std3Match[3]);
             description = rawDesc;
             matched = true;
           }
@@ -154,6 +160,96 @@ export async function POST(req: NextRequest) {
             materialValue: totalMat,
             category: 'Unmapped'
           });
+        }
+      }
+
+      // 2. Vertical Stream Fallback (If PDF table extracted column-by-column / cell-by-cell vertically)
+      if (lineItems.length === 0) {
+        const cleanTokens = lines.map(l => l.trim()).filter(l => l.length > 0);
+        let lastRowEnd = 0;
+
+        for (let i = 0; i < cleanTokens.length - 6; i++) {
+          // Look for Equinix 7-column pattern: [Qty] [Price] [Unit] [TotalMat] [Labor] [Unit] [TotalHrs]
+          if (
+            isNumeric(cleanTokens[i]) &&
+            isNumeric(cleanTokens[i + 1]) &&
+            isUnitLetter(cleanTokens[i + 2]) &&
+            isNumeric(cleanTokens[i + 3]) &&
+            isNumeric(cleanTokens[i + 4]) &&
+            isUnitLetter(cleanTokens[i + 5]) &&
+            isNumeric(cleanTokens[i + 6])
+          ) {
+            // Found a valid vertical row!
+            // Gather description tokens between lastRowEnd and i
+            const descTokens = cleanTokens.slice(lastRowEnd, i).filter(t => !t.toLowerCase().includes('project name') && !t.toLowerCase().includes('page') && !t.toLowerCase().includes('description') && !t.toLowerCase().includes('totals'));
+            
+            // Remove standalone item number if present at start (e.g. "1", "2")
+            if (descTokens.length > 1 && isNumeric(descTokens[0])) {
+              descTokens.shift();
+            }
+
+            const description = descTokens.join(' ');
+
+            if (description.length > 2 && !description.toLowerCase().includes('totals')) {
+              const qty = parseNum(cleanTokens[i]);
+              const price = parseNum(cleanTokens[i + 1]);
+              const totalMat = parseNum(cleanTokens[i + 3]);
+              const labor = parseNum(cleanTokens[i + 6]);
+
+              lineItems.push({
+                id: `pdf-v-${idCounter++}`,
+                description,
+                quantity: qty,
+                laborHours: Number(labor.toFixed(2)),
+                unitPrice: Math.abs(price),
+                materialValue: totalMat,
+                category: 'Unmapped'
+              });
+            }
+
+            // Move pointer past this row
+            lastRowEnd = i + 7;
+            i += 6;
+          }
+        }
+
+        // 3. Fallback for standard 4-column numeric vertical streams without unit letters
+        if (lineItems.length === 0) {
+          lastRowEnd = 0;
+          for (let i = 0; i < cleanTokens.length - 3; i++) {
+            if (
+              isNumeric(cleanTokens[i]) &&
+              isNumeric(cleanTokens[i + 1]) &&
+              isNumeric(cleanTokens[i + 2]) &&
+              isNumeric(cleanTokens[i + 3])
+            ) {
+              const descTokens = cleanTokens.slice(lastRowEnd, i).filter(t => !t.toLowerCase().includes('project') && !t.toLowerCase().includes('page') && !t.toLowerCase().includes('description') && !t.toLowerCase().includes('totals'));
+              if (descTokens.length > 1 && isNumeric(descTokens[0])) {
+                descTokens.shift();
+              }
+
+              const description = descTokens.join(' ');
+              if (description.length > 2 && !description.toLowerCase().includes('totals')) {
+                const qty = parseNum(cleanTokens[i]);
+                const labor = parseNum(cleanTokens[i + 1]);
+                const price = parseNum(cleanTokens[i + 2]);
+                const totalMat = parseNum(cleanTokens[i + 3]);
+
+                lineItems.push({
+                  id: `pdf-v4-${idCounter++}`,
+                  description,
+                  quantity: qty,
+                  laborHours: Number(labor.toFixed(2)),
+                  unitPrice: Math.abs(price),
+                  materialValue: totalMat,
+                  category: 'Unmapped'
+                });
+              }
+
+              lastRowEnd = i + 4;
+              i += 3;
+            }
+          }
         }
       }
     } else {
