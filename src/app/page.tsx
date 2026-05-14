@@ -20,9 +20,9 @@ const MOCK_SAMPLE_ITEMS: LineItem[] = [
   { id: 'demo-6', description: 'Toggle Switch 20A', quantity: 50, laborHours: 10, unitPrice: 18, materialValue: 900, category: 'LIGHTING & CONTROLS' },
   { id: 'demo-7', description: 'Disconnect Switch 100A', quantity: 3, laborHours: 9, unitPrice: 650, materialValue: 1950, category: 'DISTRIBUTION' },
   { id: 'demo-8', description: 'Distribution Panel 225A', quantity: 2, laborHours: 16, unitPrice: 3500, materialValue: 7000, category: 'DISTRIBUTION' },
-  { id: 'demo-9', description: 'Duplex Receptacle 15A', quantity: 200, laborHours: 35, unitPrice: 8.50, materialValue: 1700, category: 'POWER SYSTEMS' },
-  { id: 'demo-10', description: '3/4in EMT Conduit 10ft', quantity: 300, laborHours: 60, unitPrice: 12.00, materialValue: 3600, category: 'BRANCH WIRING' },
-  { id: 'demo-11', description: 'RW90 Copper Wire #12 AWG', quantity: 2500, laborHours: 45, unitPrice: 0.85, materialValue: 2125, category: 'BRANCH WIRING' },
+  { id: 'demo-9', description: 'Duplex Receptacle 15A', quantity: 200, laborHours: 35, unitPrice: 8.50, materialValue: 1700, category: 'POWER SYSTEMS & DEVICES' },
+  { id: 'demo-10', description: '3/4in EMT Conduit 10ft', quantity: 300, laborHours: 60, unitPrice: 12.00, materialValue: 3600, category: 'CONDUITS, WIRES, CABLES & TERMINATIONS' },
+  { id: 'demo-11', description: 'RW90 Copper Wire #12 AWG', quantity: 2500, laborHours: 45, unitPrice: 0.85, materialValue: 2125, category: 'CONDUITS, WIRES, CABLES & TERMINATIONS' },
   { id: 'demo-12', description: 'S-Hooks Fasteners', quantity: 500, laborHours: 4, unitPrice: 0.45, materialValue: 225, category: 'GENERAL ITEMS' },
   { id: 'demo-13', description: 'Polytwine Pull String 6500ft', quantity: 2, laborHours: 2, unitPrice: 45, materialValue: 90, category: 'GENERAL ITEMS' },
   { id: 'demo-14', description: 'Unspecified Hardware Brackets', quantity: 100, laborHours: 8, unitPrice: 5.50, materialValue: 550, category: 'Unmapped' }
