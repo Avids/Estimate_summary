@@ -52,7 +52,7 @@ export const SYSTEM_MAPPINGS: { category: string; keywords: string[] }[] = [
   },
   {
     category: 'SUPPORTS & FASTENERS',
-    keywords: ['Strut', 'Hanger', 'Clamp', 'Rod', 'T-Rod', 'Anchor', 'Nut', 'Bolt', 'Jack Chain', 'S-Hook']
+    keywords: ['Threaded Rod', 'Anchor', 'Spring Nut', 'Washer', 'Bolt']
   },
   {
     category: 'GROUNDING & BONDING',
@@ -107,9 +107,9 @@ export function classifyLineItem(description: string): string {
   const isBX = /\bbx\b/i.test(cleanDesc) || /\bac90\b/i.test(cleanDesc);
   if (isBX) return 'BRANCH WIRING & CONDUITS';
 
-  const isWireOrConduit = /conduit|wire|teck|emt|grc|pvc|ent|hdpe|lt|t90|rw90|rwu90|conn|coupling|elbow|bushing/i.test(cleanDesc);
-  if (isWireOrConduit) {
-    const normDesc = cleanDesc.replace(/in\b/gi, '"').replace(/\s+"/g, '"').replace(/awg/gi, '');
+  const isWireConduitOrFitting = /conduit|wire|teck|emt|grc|pvc|ent|hdpe|lt|t90|rw90|rwu90|conn|coupling|cplg|elbow|bushing|clamp|cd1b/i.test(cleanDesc);
+  if (isWireConduitOrFitting) {
+    const normDesc = cleanDesc.replace(/in\./gi, '"').replace(/in\b/gi, '"').replace(/\s+"/g, '"').replace(/awg/gi, '');
     
     const feederConduitSizes = ['1 1/2"', '1-1/2"', '1.5"', '2"', '2 1/2"', '2-1/2"', '2.5"', '3"', '3 1/2"', '3-1/2"', '3.5"', '4"', '5"', '6"'];
     const feederWireSizes = ['#4', '#3', '#2', '#1', '1/0', '2/0', '3/0', '4/0'];
