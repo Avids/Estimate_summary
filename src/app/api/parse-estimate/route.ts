@@ -28,17 +28,26 @@ export async function POST(req: NextRequest) {
       const worksheet = workbook.Sheets[firstSheetName];
       const rows: any[] = XLSX.utils.sheet_to_json(worksheet, { defval: '' });
 
+      const cleanNum = (val: any) => {
+        if (val === undefined || val === null || val === '') return 0;
+        if (typeof val === 'number') return val;
+        const str = String(val).trim().replace(/[\$,]/g, '').replace(/[()]/g, '');
+        const n = parseFloat(str);
+        return isNaN(n) ? 0 : n;
+      };
+
       let idCounter = 1;
       for (const row of rows) {
         // Look for common headers in estimate spreadsheets
-        const description = row['Description'] || row['Item'] || row['Material Description'] || row['Name'] || row['Item Description'] || '';
+        const description = row['Description'] || row['Item'] || row['Material Description'] || row['Name'] || row['Item Description'] || row['Description '] || '';
         if (!description || typeof description !== 'string' || description.trim().length === 0) continue;
+        if (description.toLowerCase().includes('totals')) continue;
 
-        const quantity = parseFloat(row['Qty'] || row['Quantity'] || row['Count'] || 0) || 0;
-        const laborHours = parseFloat(row['Labor'] || row['Labor Hours'] || row['Hours'] || row['Hrs'] || 0) || 0;
-        const unitPrice = parseFloat(row['Price'] || row['Unit Price'] || row['Rate'] || row['Cost'] || 0) || 0;
+        const quantity = cleanNum(row['Qty'] || row['Quantity'] || row['Count'] || row['Quantity ']);
+        const laborHours = cleanNum(row['Total Hours'] || row['Labor'] || row['Labor Hours'] || row['Hours'] || row['Hrs'] || row['Total Hours ']);
+        const unitPrice = cleanNum(row['Net Price'] || row['Price'] || row['Unit Price'] || row['Rate'] || row['Cost'] || row['Net Price ']);
         
-        let materialValue = parseFloat(row['Total'] || row['Material Total'] || row['Material Value'] || row['Ext Price'] || 0) || 0;
+        let materialValue = cleanNum(row['Total Materia'] || row['Total Material'] || row['Material Total'] || row['Total'] || row['Ext Price'] || row['Material Value'] || row['Total Materia ']);
         if (materialValue === 0 && quantity > 0 && unitPrice > 0) {
           materialValue = Number((quantity * unitPrice).toFixed(2));
         }
@@ -82,20 +91,23 @@ export async function POST(req: NextRequest) {
       const lines = cleanPdfText.split('\n');
       let idCounter = 1;
 
-      // Helper to check if a string is a numeric value
       const isNumeric = (str: string) => {
         if (!str) return false;
-        const clean = str.trim().replace(/[\$,]/g, '');
+        const clean = str.trim().replace(/[\$,]/g, '').replace(/[()]/g, '');
         if (clean === '-' || clean === '') return false;
         return !isNaN(parseFloat(clean)) && isFinite(Number(clean));
       };
 
-      const parseNum = (str: string) => parseFloat(str.trim().replace(/[\$,]/g, '')) || 0;
+      const parseNum = (str: string) => {
+        if (!str) return 0;
+        const clean = str.trim().replace(/[\$,]/g, '').replace(/[()]/g, '');
+        return parseFloat(clean) || 0;
+      };
 
       const isUnitLetter = (str: string) => {
         if (!str) return false;
         const clean = str.trim().toUpperCase();
-        return clean === 'C' || clean === 'M' || clean === 'E';
+        return ['C', 'M', 'E', 'EA', 'FT', 'LF', 'HR', 'LOT', 'SET', 'PR', 'BAG', 'BOX', 'RL', 'MFT'].includes(clean);
       };
 
       // 1. Horizontal Scan
@@ -169,94 +181,66 @@ export async function POST(req: NextRequest) {
         }
       }
 
-      // 2. Universal Token Stream Fallback (Tokenize by ANY whitespace: spaces, tabs, or newlines)
+      // 2. Absolute Ultimate Universal Sequence Scanner (Scan cleanTokens for any row ending with 3 to 5 numbers)
       if (lineItems.length === 0) {
         const cleanTokens = cleanPdfText.split(/\s+/).filter(Boolean);
         let lastRowEnd = 0;
 
-        for (let i = 0; i < cleanTokens.length - 6; i++) {
-          // Look for Equinix 7-token sequence: [Qty] [Price] [Unit] [TotalMat] [Labor] [Unit] [TotalHrs]
-          if (
-            isNumeric(cleanTokens[i]) &&
-            isNumeric(cleanTokens[i + 1]) &&
-            isUnitLetter(cleanTokens[i + 2]) &&
-            isNumeric(cleanTokens[i + 3]) &&
-            isNumeric(cleanTokens[i + 4]) &&
-            isUnitLetter(cleanTokens[i + 5]) &&
-            isNumeric(cleanTokens[i + 6])
-          ) {
-            const descTokens = cleanTokens.slice(lastRowEnd, i).filter(t => 
-              !t.toLowerCase().includes('project') && 
-              !t.toLowerCase().includes('name') && 
-              !t.toLowerCase().includes('page') && 
-              !t.toLowerCase().includes('description') && 
-              !t.toLowerCase().includes('totals') &&
-              !t.toLowerCase().includes('quantity') &&
-              !t.toLowerCase().includes('materia') &&
-              !t.toLowerCase().includes('labor') &&
-              !t.toLowerCase().includes('hours') &&
-              !t.toLowerCase().includes('net') &&
-              !t.toLowerCase().includes('price') &&
-              !t.toLowerCase().includes('c02660')
-            );
-            
-            if (descTokens.length > 0 && /^\d+$/.test(descTokens[0])) {
-              descTokens.shift();
+        for (let i = 0; i < cleanTokens.length - 2; i++) {
+          if (isNumeric(cleanTokens[i])) {
+            // Check how many numbers follow in the next 12 tokens
+            const window = cleanTokens.slice(i, i + 12);
+            const numIndices: number[] = [];
+            for (let j = 0; j < window.length; j++) {
+              if (isNumeric(window[j])) {
+                numIndices.push(i + j);
+              } else if (!isUnitLetter(window[j]) && window[j].replace(/[()]/g, '').length > 2) {
+                // Encountered a non-unit word. End of numeric cluster!
+                break;
+              }
             }
 
-            const description = descTokens.join(' ').trim();
-
-            if (description.length > 1) {
-              const qty = parseNum(cleanTokens[i]);
-              const price = parseNum(cleanTokens[i + 1]);
-              const totalMat = parseNum(cleanTokens[i + 3]);
-              const labor = parseNum(cleanTokens[i + 6]);
-
-              lineItems.push({
-                id: `pdf-ut-${idCounter++}`,
-                description,
-                quantity: qty,
-                laborHours: Number(labor.toFixed(2)),
-                unitPrice: Math.abs(price),
-                materialValue: totalMat,
-                category: 'Unmapped'
-              });
-            }
-
-            lastRowEnd = i + 7;
-            i += 6;
-          }
-        }
-
-        // 3. Fallback for standard 4-token numeric streams without unit letters
-        if (lineItems.length === 0) {
-          lastRowEnd = 0;
-          for (let i = 0; i < cleanTokens.length - 3; i++) {
-            if (
-              isNumeric(cleanTokens[i]) &&
-              isNumeric(cleanTokens[i + 1]) &&
-              isNumeric(cleanTokens[i + 2]) &&
-              isNumeric(cleanTokens[i + 3])
-            ) {
+            if (numIndices.length >= 3) {
+              const lastNumIndex = numIndices[numIndices.length - 1];
+              // Gather description from lastRowEnd to i
               const descTokens = cleanTokens.slice(lastRowEnd, i).filter(t => 
                 !t.toLowerCase().includes('project') && 
+                !t.toLowerCase().includes('name') && 
                 !t.toLowerCase().includes('page') && 
                 !t.toLowerCase().includes('description') && 
-                !t.toLowerCase().includes('totals')
+                !t.toLowerCase().includes('totals') && 
+                !t.toLowerCase().includes('quantity') && 
+                !t.toLowerCase().includes('materia') && 
+                !t.toLowerCase().includes('labor') && 
+                !t.toLowerCase().includes('hours') && 
+                !t.toLowerCase().includes('net') && 
+                !t.toLowerCase().includes('price') && 
+                !t.toLowerCase().includes('c02660')
               );
+
               if (descTokens.length > 0 && /^\d+$/.test(descTokens[0])) {
                 descTokens.shift();
               }
 
               const description = descTokens.join(' ').trim();
               if (description.length > 1) {
-                const qty = parseNum(cleanTokens[i]);
-                const labor = parseNum(cleanTokens[i + 1]);
-                const price = parseNum(cleanTokens[i + 2]);
-                const totalMat = parseNum(cleanTokens[i + 3]);
+                const nums = numIndices.map(idx => parseNum(cleanTokens[idx]));
+                // nums array has Qty, Price, TotalMat, Labor, TotalHrs (or similar)
+                let qty = nums[0];
+                let price = nums[1];
+                let totalMat = nums[nums.length - 3] || nums[nums.length - 2] || 0;
+                let labor = nums[nums.length - 1] || 0;
+
+                if (nums.length === 4) {
+                  // Qty, Labor, Price, TotalMat
+                  qty = nums[0];
+                  labor = nums[1];
+                  price = nums[2];
+                  totalMat = nums[3];
+                }
 
                 lineItems.push({
-                  id: `pdf-ut4-${idCounter++}`,
+                  id: `pdf-uni-${idCounter++}`,
                   description,
                   quantity: qty,
                   laborHours: Number(labor.toFixed(2)),
@@ -266,69 +250,8 @@ export async function POST(req: NextRequest) {
                 });
               }
 
-              lastRowEnd = i + 4;
-              i += 3;
-            }
-          }
-        }
-
-        // 4. Absolute Ultimate Right-to-Left Line Token Fallback (for arbitrary merged/unmerged table formats)
-        if (lineItems.length === 0) {
-          for (const line of lines) {
-            const trimmed = line.trim();
-            if (!trimmed || trimmed.length < 5) continue;
-            if (trimmed.toLowerCase().startsWith('project') || trimmed.toLowerCase().startsWith('description') || trimmed.toLowerCase().startsWith('totals')) continue;
-
-            const tTokens = trimmed.split(/\s+/);
-            const numTokens: string[] = [];
-            let descEndIndex = tTokens.length;
-
-            // Scan backwards from right to left collecting all numbers
-            for (let j = tTokens.length - 1; j >= 0; j--) {
-              const tk = tTokens[j];
-              if (isUnitLetter(tk) || tk.toUpperCase() === 'EACH' || tk.toUpperCase() === 'LOT' || tk.toUpperCase() === 'MFT') {
-                continue;
-              }
-              if (isNumeric(tk)) {
-                numTokens.unshift(tk);
-                descEndIndex = j;
-              } else {
-                // Hit a non-number / non-unit word. This marks the end of the description!
-                break;
-              }
-            }
-
-            if (numTokens.length >= 3) {
-              const descTokens = tTokens.slice(0, descEndIndex);
-              if (descTokens.length > 0 && /^\d+$/.test(descTokens[0])) {
-                descTokens.shift();
-              }
-
-              const description = descTokens.join(' ').trim();
-              if (description.length > 1) {
-                // In typical estimate formats, the rightmost number is Total Hours or Total Material
-                // If 5 numbers gathered: Qty, Price, TotalMat, Labor, TotalHrs
-                let qty = parseNum(numTokens[0]);
-                let totalMat = parseNum(numTokens[numTokens.length - 3] || numTokens[numTokens.length - 2]);
-                let labor = parseNum(numTokens[numTokens.length - 1]);
-
-                if (numTokens.length === 4) {
-                  // Qty, Labor, Price, TotalMat
-                  qty = parseNum(numTokens[0]);
-                  totalMat = parseNum(numTokens[3]);
-                  labor = parseNum(numTokens[1]);
-                }
-
-                lineItems.push({
-                  id: `pdf-rtl-${idCounter++}`,
-                  description,
-                  quantity: qty,
-                  laborHours: Number(labor.toFixed(2)),
-                  unitPrice: parseNum(numTokens[1]),
-                  materialValue: totalMat,
-                  category: 'Unmapped'
-                });
-              }
+              lastRowEnd = lastNumIndex + 1;
+              i = lastNumIndex;
             }
           }
         }
