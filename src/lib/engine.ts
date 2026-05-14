@@ -39,7 +39,7 @@ export const WBS_CATEGORIES = [
   'LIGHTING & CONTROLS',
   'DISTRIBUTION',
   'POWER SYSTEMS',
-  'BRANCH WIRING',
+  'CONDUITS, WIRES & CABLES',
   'GENERAL ITEMS'
 ];
 
@@ -86,15 +86,15 @@ export const SYSTEM_MAPPINGS: { category: string; keywords: string[] }[] = [
   },
   {
     category: 'DISTRIBUTION',
-    keywords: ['Panel', 'Breaker', 'Transformer', 'Switchgear', 'Bus', 'Disconnect', 'TECK', 'XMER']
+    keywords: ['Panel', 'Breaker', 'Transformer', 'Switchgear', 'Bus', 'Disconnect', 'XMER']
   },
   {
     category: 'POWER SYSTEMS',
     keywords: ['Receptacle', 'Outlet', 'Plug', 'Motor', 'Splitter']
   },
   {
-    category: 'BRANCH WIRING',
-    keywords: ['EMT', 'BX', 'RW90', 'AC90', 'Conduit', 'Wire', 'CONN']
+    category: 'CONDUITS, WIRES, CABLES & TERMINATIONS',
+    keywords: ['EMT', 'BX', 'RW90', 'AC90', 'Conduit', 'Wire', 'CONN', 'TECK']
   },
   {
     category: 'GENERAL ITEMS',
