@@ -75,19 +75,23 @@ export async function POST(req: NextRequest) {
         }, { status: 400 });
       }
 
-      const lines = pdfText.split('\n');
+      // Normalize all unicode dashes, en-dashes, and minus signs to standard hyphen
+      const cleanPdfText = pdfText.replace(/[–—−]/g, '-');
+      const lines = cleanPdfText.split('\n');
       let idCounter = 1;
 
-      // Helper to check if a string is a numeric value (allowing negative sign, commas, and decimals)
+      // Helper to check if a string is a numeric value
       const isNumeric = (str: string) => {
-        const clean = str.trim().replace(/,/g, '');
+        if (!str) return false;
+        const clean = str.trim().replace(/[\$,]/g, '');
+        if (clean === '-' || clean === '') return false;
         return !isNaN(parseFloat(clean)) && isFinite(Number(clean));
       };
 
-      const parseNum = (str: string) => parseFloat(str.trim().replace(/,/g, '')) || 0;
+      const parseNum = (str: string) => parseFloat(str.trim().replace(/[\$,]/g, '')) || 0;
 
-      // Helper to check if a string is a unit letter C, M, E
       const isUnitLetter = (str: string) => {
+        if (!str) return false;
         const clean = str.trim().toUpperCase();
         return clean === 'C' || clean === 'M' || clean === 'E';
       };
@@ -163,13 +167,13 @@ export async function POST(req: NextRequest) {
         }
       }
 
-      // 2. Vertical Stream Fallback (If PDF table extracted column-by-column / cell-by-cell vertically)
+      // 2. Universal Token Stream Fallback (Tokenize by ANY whitespace: spaces, tabs, or newlines)
       if (lineItems.length === 0) {
-        const cleanTokens = lines.map(l => l.trim()).filter(l => l.length > 0);
+        const cleanTokens = cleanPdfText.split(/\s+/).filter(Boolean);
         let lastRowEnd = 0;
 
         for (let i = 0; i < cleanTokens.length - 6; i++) {
-          // Look for Equinix 7-column pattern: [Qty] [Price] [Unit] [TotalMat] [Labor] [Unit] [TotalHrs]
+          // Look for Equinix 7-token sequence: [Qty] [Price] [Unit] [TotalMat] [Labor] [Unit] [TotalHrs]
           if (
             isNumeric(cleanTokens[i]) &&
             isNumeric(cleanTokens[i + 1]) &&
@@ -179,25 +183,35 @@ export async function POST(req: NextRequest) {
             isUnitLetter(cleanTokens[i + 5]) &&
             isNumeric(cleanTokens[i + 6])
           ) {
-            // Found a valid vertical row!
-            // Gather description tokens between lastRowEnd and i
-            const descTokens = cleanTokens.slice(lastRowEnd, i).filter(t => !t.toLowerCase().includes('project name') && !t.toLowerCase().includes('page') && !t.toLowerCase().includes('description') && !t.toLowerCase().includes('totals'));
+            const descTokens = cleanTokens.slice(lastRowEnd, i).filter(t => 
+              !t.toLowerCase().includes('project') && 
+              !t.toLowerCase().includes('name') && 
+              !t.toLowerCase().includes('page') && 
+              !t.toLowerCase().includes('description') && 
+              !t.toLowerCase().includes('totals') &&
+              !t.toLowerCase().includes('quantity') &&
+              !t.toLowerCase().includes('materia') &&
+              !t.toLowerCase().includes('labor') &&
+              !t.toLowerCase().includes('hours') &&
+              !t.toLowerCase().includes('net') &&
+              !t.toLowerCase().includes('price') &&
+              !t.toLowerCase().includes('c02660')
+            );
             
-            // Remove standalone item number if present at start (e.g. "1", "2")
-            if (descTokens.length > 1 && isNumeric(descTokens[0])) {
+            if (descTokens.length > 0 && /^\d+$/.test(descTokens[0])) {
               descTokens.shift();
             }
 
-            const description = descTokens.join(' ');
+            const description = descTokens.join(' ').trim();
 
-            if (description.length > 2 && !description.toLowerCase().includes('totals')) {
+            if (description.length > 1) {
               const qty = parseNum(cleanTokens[i]);
               const price = parseNum(cleanTokens[i + 1]);
               const totalMat = parseNum(cleanTokens[i + 3]);
               const labor = parseNum(cleanTokens[i + 6]);
 
               lineItems.push({
-                id: `pdf-v-${idCounter++}`,
+                id: `pdf-ut-${idCounter++}`,
                 description,
                 quantity: qty,
                 laborHours: Number(labor.toFixed(2)),
@@ -207,13 +221,12 @@ export async function POST(req: NextRequest) {
               });
             }
 
-            // Move pointer past this row
             lastRowEnd = i + 7;
             i += 6;
           }
         }
 
-        // 3. Fallback for standard 4-column numeric vertical streams without unit letters
+        // 3. Fallback for standard 4-token numeric streams without unit letters
         if (lineItems.length === 0) {
           lastRowEnd = 0;
           for (let i = 0; i < cleanTokens.length - 3; i++) {
@@ -223,20 +236,25 @@ export async function POST(req: NextRequest) {
               isNumeric(cleanTokens[i + 2]) &&
               isNumeric(cleanTokens[i + 3])
             ) {
-              const descTokens = cleanTokens.slice(lastRowEnd, i).filter(t => !t.toLowerCase().includes('project') && !t.toLowerCase().includes('page') && !t.toLowerCase().includes('description') && !t.toLowerCase().includes('totals'));
-              if (descTokens.length > 1 && isNumeric(descTokens[0])) {
+              const descTokens = cleanTokens.slice(lastRowEnd, i).filter(t => 
+                !t.toLowerCase().includes('project') && 
+                !t.toLowerCase().includes('page') && 
+                !t.toLowerCase().includes('description') && 
+                !t.toLowerCase().includes('totals')
+              );
+              if (descTokens.length > 0 && /^\d+$/.test(descTokens[0])) {
                 descTokens.shift();
               }
 
-              const description = descTokens.join(' ');
-              if (description.length > 2 && !description.toLowerCase().includes('totals')) {
+              const description = descTokens.join(' ').trim();
+              if (description.length > 1) {
                 const qty = parseNum(cleanTokens[i]);
                 const labor = parseNum(cleanTokens[i + 1]);
                 const price = parseNum(cleanTokens[i + 2]);
                 const totalMat = parseNum(cleanTokens[i + 3]);
 
                 lineItems.push({
-                  id: `pdf-v4-${idCounter++}`,
+                  id: `pdf-ut4-${idCounter++}`,
                   description,
                   quantity: qty,
                   laborHours: Number(labor.toFixed(2)),
