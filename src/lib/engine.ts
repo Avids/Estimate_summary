@@ -27,6 +27,10 @@ export interface ParseResult {
 }
 
 export const WBS_CATEGORIES = [
+  'CIVIL & SITE WORKS',
+  'PREMIUM & OT LABOR',
+  'CABLE TRAY & SUPPORT',
+  'GROUNDING & BONDING',
   'TEST & COMMISSIONING',
   'FIRE ALARM',
   'COMMUNICATION',
@@ -39,12 +43,28 @@ export const WBS_CATEGORIES = [
 
 export const SYSTEM_MAPPINGS: { category: string; keywords: string[] }[] = [
   {
+    category: 'CIVIL & SITE WORKS',
+    keywords: ['Civil', 'Trench', 'Coring', 'Grout', 'Patch', 'Excavation', 'Scanning']
+  },
+  {
+    category: 'PREMIUM & OT LABOR',
+    keywords: ['OT', 'Overtime', 'Premium', 'Shift', 'Weekend', 'After Hours']
+  },
+  {
+    category: 'CABLE TRAY & SUPPORT',
+    keywords: ['Tray', 'Ladder', 'Strut', 'Channel', 'Drop-in', 'Beam Clamp']
+  },
+  {
+    category: 'GROUNDING & BONDING',
+    keywords: ['Ground', 'Bond', 'Copper', 'Bare', 'Lug', 'Cadweld', 'Rod', 'Bus Bar']
+  },
+  {
     category: 'TEST & COMMISSIONING',
-    keywords: ['Test', 'Megger', 'Verification', 'Commissioning', 'Certify', 'Hi-Pot', 'Label']
+    keywords: ['Test', 'Megger', 'Verification', 'Commissioning', 'Certify', 'Hi-Pot']
   },
   {
     category: 'FIRE ALARM',
-    keywords: ['FA', 'Smoke', 'Heat', 'Strobe', 'Pull Station', 'FACP', '105']
+    keywords: ['FA', 'Smoke', 'Heat', 'Strobe', 'FACP', '105']
   },
   {
     category: 'COMMUNICATION',
@@ -56,11 +76,11 @@ export const SYSTEM_MAPPINGS: { category: string; keywords: string[] }[] = [
   },
   {
     category: 'LIGHTING & CONTROLS',
-    keywords: ['Fixture', 'LED', 'Dimmer', 'Occupancy', 'Sensor', 'Switch', 'Relay', 'Driver']
+    keywords: ['Fixture', 'LED', 'Dimmer', 'Occupancy', 'Sensor', 'Switch', 'Driver']
   },
   {
     category: 'DISTRIBUTION',
-    keywords: ['Panel', 'Breaker', 'Transformer', 'Switchgear', 'Bus', 'Disconnect', 'Lugs']
+    keywords: ['Panel', 'Breaker', 'Transformer', 'Switchgear', 'Bus', 'Disconnect']
   },
   {
     category: 'POWER SYSTEMS',
@@ -100,13 +120,12 @@ export function classifyLineItem(description: string): string {
   }
 
   // 3. Hierarchy priority scan
-  // Words in descriptions might be separated by spaces or hyphens
   for (const mapping of SYSTEM_MAPPINGS) {
     for (const kw of mapping.keywords) {
       const cleanKw = kw.toLowerCase();
-      // Match keyword as a word boundary or exact inclusion
-      // e.g. "FA" should match word boundary so it doesn't match "FACP" or "FACP" matches first.
-      if (cleanKw === 'fa' || cleanKw === '105' || cleanKw === 'led' || cleanKw === 'bx') {
+      // Match short keywords as word boundaries so they don't trigger false positives inside other words
+      // e.g. "ot" shouldn't match "total", "lug" shouldn't match "plug", "fa" shouldn't match "facp"
+      if (['fa', '105', 'led', 'bx', 'ot', 'lug', 'rod', 'bond', 'bus'].includes(cleanKw)) {
         const regex = new RegExp(`\\b${cleanKw}\\b`, 'i');
         if (regex.test(cleanDesc)) {
           return mapping.category;
