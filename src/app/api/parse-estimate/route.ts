@@ -78,57 +78,82 @@ export async function POST(req: NextRequest) {
       const lines = pdfText.split('\n');
       let idCounter = 1;
 
-      // Regex matching for typical estimate lines: Description ... Qty ... Labor ... Price ... Total
-      // Matches descriptions followed by multiple numeric columns
+      // Regex matching for typical estimate lines: Description ... Qty ... Price ... Total
       for (const line of lines) {
         const trimmed = line.trim();
         if (!trimmed || trimmed.length < 5) continue;
+        if (trimmed.toLowerCase().startsWith('project name') || trimmed.toLowerCase().startsWith('description')) continue;
+        if (trimmed.toLowerCase().includes('totals') && trimmed.toLowerCase().startsWith('totals')) continue;
 
-        // Matches lines ending with 3 to 5 floating point/integer numbers
-        // e.g., "1/2in EMT Conduit 500 0.05 1.50 750.00"
-        const numbersMatch = trimmed.match(/([\d,]+\.?\d*)\s+([\d,]+\.?\d*)\s+([\d,]+\.?\d*)\s+([\d,]+\.?\d*)$/);
-        
-        if (numbersMatch) {
-          const fullMatch = numbersMatch[0];
-          const description = trimmed.substring(0, trimmed.indexOf(fullMatch)).trim();
-          
-          if (description.length > 2 && !description.toLowerCase().includes('total') && !description.toLowerCase().includes('summary')) {
-            const qty = parseFloat(numbersMatch[1].replace(/,/g, '')) || 0;
-            const labor = parseFloat(numbersMatch[2].replace(/,/g, '')) || 0;
-            const price = parseFloat(numbersMatch[3].replace(/,/g, '')) || 0;
-            const total = parseFloat(numbersMatch[4].replace(/,/g, '')) || 0;
+        // Pattern 1: Equinix TR-06 format (with negative numbers, comma, decimals, and Ur letters C/M/E)
+        // e.g.: '1 1 1/2" EMT -600 834.68 C -5,008.08 8.70 C -52.20'
+        // Groups: 1=Qty, 2=NetPrice, 3=Unit1, 4=TotalMat, 5=LaborRate, 6=Unit2, 7=TotalHrs
+        const equinixMatch = trimmed.match(/(-?[\d,]+\.?\d*)\s+(-?[\d,]+\.?\d*)\s+([A-Za-z]{1,4})\s+(-?[\d,]+\.?\d*)\s+(-?[\d,]+\.?\d*)\s+([A-Za-z]{1,4})\s+(-?[\d,]+\.?\d*)$/);
 
-            lineItems.push({
-              id: `pdf-${idCounter++}`,
-              description,
-              quantity: qty,
-              laborHours: labor,
-              unitPrice: price,
-              materialValue: total,
-              category: 'Unmapped'
-            });
+        // Pattern 2: Standard 4 numbers (Qty, Labor, Price, Total) without letters
+        const std4Match = trimmed.match(/(-?[\d,]+\.?\d*)\s+(-?[\d,]+\.?\d*)\s+(-?[\d,]+\.?\d*)\s+(-?[\d,]+\.?\d*)$/);
+
+        // Pattern 3: Standard 3 numbers (Qty, Price, Total)
+        const std3Match = trimmed.match(/(-?[\d,]+\.?\d*)\s+(-?[\d,]+\.?\d*)\s+(-?[\d,]+\.?\d*)$/);
+
+        let description = '';
+        let qty = 0;
+        let labor = 0;
+        let price = 0;
+        let totalMat = 0;
+        let matched = false;
+
+        if (equinixMatch) {
+          const fullMatch = equinixMatch[0];
+          let rawDesc = trimmed.substring(0, trimmed.indexOf(fullMatch)).trim();
+          // Strip optional leading row number (e.g., "1 ", "25 ")
+          rawDesc = rawDesc.replace(/^\d+\s+/, '');
+
+          if (rawDesc.length > 2 && !rawDesc.toLowerCase().includes('totals')) {
+            qty = parseFloat(equinixMatch[1].replace(/,/g, '')) || 0;
+            price = parseFloat(equinixMatch[2].replace(/,/g, '')) || 0;
+            totalMat = parseFloat(equinixMatch[4].replace(/,/g, '')) || 0;
+            labor = parseFloat(equinixMatch[7].replace(/,/g, '')) || 0; // Total labor hours
+            description = rawDesc;
+            matched = true;
           }
-        } else {
-          // Alternative fallback pattern: Description ... Qty ... Total Price
-          const altMatch = trimmed.match(/([\d,]+\.?\d*)\s+[\$\€\£]?([\d,]+\.?\d*)$/);
-          if (altMatch) {
-            const fullMatch = altMatch[0];
-            const description = trimmed.substring(0, trimmed.indexOf(fullMatch)).trim();
-            if (description.length > 2 && !description.toLowerCase().includes('total') && !description.toLowerCase().includes('summary')) {
-              const qty = parseFloat(altMatch[1].replace(/,/g, '')) || 0;
-              const total = parseFloat(altMatch[2].replace(/,/g, '')) || 0;
+        } else if (std4Match) {
+          const fullMatch = std4Match[0];
+          let rawDesc = trimmed.substring(0, trimmed.indexOf(fullMatch)).trim();
+          rawDesc = rawDesc.replace(/^\d+\s+/, '');
 
-              lineItems.push({
-                id: `pdf-${idCounter++}`,
-                description,
-                quantity: qty,
-                laborHours: 0,
-                unitPrice: Number((total / (qty || 1)).toFixed(2)),
-                materialValue: total,
-                category: 'Unmapped'
-              });
-            }
+          if (rawDesc.length > 2 && !rawDesc.toLowerCase().includes('totals')) {
+            qty = parseFloat(std4Match[1].replace(/,/g, '')) || 0;
+            labor = parseFloat(std4Match[2].replace(/,/g, '')) || 0;
+            price = parseFloat(std4Match[3].replace(/,/g, '')) || 0;
+            totalMat = parseFloat(std4Match[4].replace(/,/g, '')) || 0;
+            description = rawDesc;
+            matched = true;
           }
+        } else if (std3Match) {
+          const fullMatch = std3Match[0];
+          let rawDesc = trimmed.substring(0, trimmed.indexOf(fullMatch)).trim();
+          rawDesc = rawDesc.replace(/^\d+\s+/, '');
+
+          if (rawDesc.length > 2 && !rawDesc.toLowerCase().includes('totals')) {
+            qty = parseFloat(std3Match[1].replace(/,/g, '')) || 0;
+            price = parseFloat(std3Match[2].replace(/,/g, '')) || 0;
+            totalMat = parseFloat(std3Match[3].replace(/,/g, '')) || 0;
+            description = rawDesc;
+            matched = true;
+          }
+        }
+
+        if (matched && description) {
+          lineItems.push({
+            id: `pdf-${idCounter++}`,
+            description,
+            quantity: qty,
+            laborHours: Number(labor.toFixed(2)),
+            unitPrice: Math.abs(price),
+            materialValue: totalMat,
+            category: 'Unmapped'
+          });
         }
       }
     } else {
