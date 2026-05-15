@@ -42,7 +42,7 @@ export const SYSTEM_MAPPINGS: { category: string; keywords: string[] }[] = [
   },
   {
     category: 'POWER SYSTEMS & DEVICES',
-    keywords: ['Receptacle', 'Outlet', 'Plug', 'Motor', 'Plaster Ring', 'Cover Plate', 'Plate', 'Decora']
+    keywords: ['Receptacle', 'Outlet', 'Plug', 'Motor', 'Cover Plate', 'Plate', 'Decora']
   },
   {
     category: 'TEST & COMMISSIONING',
@@ -66,7 +66,7 @@ export const FEEDER_MCM_SIZES = ['250', '300', '350', '400', '500', '600', '700'
 export const BRANCH_CONDUIT_SIZES = ['1/2"', '0.5"', '3/4"', '0.75"', '1"', '1 1/4"', '1-1/4"', '1.25"'];
 export const BRANCH_WIRE_SIZES = ['#14', '#12', '#10', '#8', '#6'];
 
-export const BRANCH_ROUGH_IN_BOXES = ['4in.sq', '4in. sq', '4x4', 'octagon', 'oct', '1104', 'handy box', 'device box', '1110'];
+export const BRANCH_ROUGH_IN_BOXES = ['4in.sq', '4in .sq', '4x4', 'octagon', 'oct', '1104', 'handy box', 'device box', '1110', 'Plaster Ring'];
 
 // Specific keyword words that MUST be matched as exact word boundaries to prevent false positives (e.g. 'plate' vs 'plated')
 export const WORD_BOUNDARY_KEYWORDS = ['fa', '105', 'led', 'ot', 'lug', 'rod', 'bond', 'bus', 'jb', 'plate', 'oct'];
