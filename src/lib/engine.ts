@@ -111,12 +111,31 @@ export function classifyLineItem(description: string): string {
   if (isWireConduitOrFitting) {
     const normDesc = cleanDesc.replace(/in\./gi, '"').replace(/in\b/gi, '"').replace(/\s+"/g, '"').replace(/awg/gi, '');
     
+    const matchConduitSize = (sizes: string[], text: string) => {
+      return sizes.some(size => {
+        const escaped = size.replace(/[-/\\^$*+?.()|[\]{}]/g, '\\$&');
+        // Preceding char must not be digit, dot, or slash (to prevent 4" matching 3/4")
+        const regex = new RegExp(`(^|[^\\d/.])` + escaped, 'i');
+        return regex.test(text);
+      });
+    };
+
+    const matchWireSize = (sizes: string[], text: string) => {
+      return sizes.some(size => {
+        const escaped = size.replace(/[-/\\^$*+?.()|[\]{}]/g, '\\$&');
+        // Wire sizes end in digit, use \b to ensure it's a word boundary
+        // Preceding char must not be digit (to prevent #1 matching #10)
+        const regex = new RegExp(`(^|[^\\d])` + escaped + `\\b`, 'i');
+        return regex.test(text);
+      });
+    };
+
     const feederConduitSizes = ['1 1/2"', '1-1/2"', '1.5"', '2"', '2 1/2"', '2-1/2"', '2.5"', '3"', '3 1/2"', '3-1/2"', '3.5"', '4"', '5"', '6"'];
     const feederWireSizes = ['#4', '#3', '#2', '#1', '1/0', '2/0', '3/0', '4/0'];
     const feederMCM = ['250', '300', '350', '400', '500', '600', '700', '750', '800', '900', '1000'];
 
-    const hasFeederConduit = feederConduitSizes.some(s => normDesc.includes(s.toLowerCase()));
-    const hasFeederWire = feederWireSizes.some(s => normDesc.includes(s.toLowerCase())) || 
+    const hasFeederConduit = matchConduitSize(feederConduitSizes, normDesc);
+    const hasFeederWire = matchWireSize(feederWireSizes, normDesc) || 
                           feederMCM.some(s => new RegExp(`\\b${s}\\b`).test(normDesc));
     
     if (hasFeederConduit || hasFeederWire) {
@@ -126,8 +145,8 @@ export function classifyLineItem(description: string): string {
     const branchConduitSizes = ['1/2"', '0.5"', '3/4"', '0.75"', '1"', '1 1/4"', '1-1/4"', '1.25"'];
     const branchWireSizes = ['#14', '#12', '#10', '#8', '#6'];
 
-    const hasBranchConduit = branchConduitSizes.some(s => normDesc.includes(s.toLowerCase()));
-    const hasBranchWire = branchWireSizes.some(s => normDesc.includes(s.toLowerCase()));
+    const hasBranchConduit = matchConduitSize(branchConduitSizes, normDesc);
+    const hasBranchWire = matchWireSize(branchWireSizes, normDesc);
 
     if (hasBranchConduit || hasBranchWire) {
       return 'BRANCH WIRING & CONDUITS';
