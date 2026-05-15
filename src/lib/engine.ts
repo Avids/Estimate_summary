@@ -26,63 +26,19 @@ export interface ParseResult {
   isScannedPdf?: boolean;
 }
 
-export const WBS_CATEGORIES = [
-  'FEEDERS & MAJOR RACEWAY',
-  'BRANCH WIRING & CONDUITS',
-  'JUNCTION BOXES & ENCLOSURES',
-  'RACEWAYS (TRAYS & LADDER)',
-  'SUPPORTS & FASTENERS',
-  'GROUNDING & BONDING',
-  'DISTRIBUTION',
-  'LIGHTING & CONTROLS',
-  'POWER SYSTEMS & DEVICES',
-  'TEST & COMMISSIONING',
-  'CIVIL & SITE WORKS',
-  'GENERAL'
-];
+import { 
+  WBS_CATEGORIES, 
+  SYSTEM_MAPPINGS, 
+  FEEDER_CONDUIT_SIZES, 
+  FEEDER_WIRE_SIZES, 
+  FEEDER_MCM_SIZES, 
+  BRANCH_CONDUIT_SIZES, 
+  BRANCH_WIRE_SIZES, 
+  WORD_BOUNDARY_KEYWORDS 
+} from './mappings';
 
-export const SYSTEM_MAPPINGS: { category: string; keywords: string[] }[] = [
-  {
-    category: 'JUNCTION BOXES & ENCLOSURES',
-    keywords: ['JB', 'NEMA', 'Pull Box', 'Oct Box', '4in.SQ', 'Enclosure', 'Splitter']
-  },
-  {
-    category: 'RACEWAYS (TRAYS & LADDER)',
-    keywords: ['Tray', 'Ladder', 'Wireway', 'Basket', 'J-Hook']
-  },
-  {
-    category: 'SUPPORTS & FASTENERS',
-    keywords: ['Threaded Rod', 'Anchor', 'Spring Nut', 'Washer', 'Bolt']
-  },
-  {
-    category: 'GROUNDING & BONDING',
-    keywords: ['Ground', 'Bond', 'Copper', 'Bare', 'Lug', 'Cadweld', 'Rod']
-  },
-  {
-    category: 'DISTRIBUTION',
-    keywords: ['Panel', 'Breaker', 'Transformer', 'Switchgear', 'Disconnect']
-  },
-  {
-    category: 'LIGHTING & CONTROLS',
-    keywords: ['Fixture', 'LED', 'Dimmer', 'Sensor', 'Switch', 'Driver']
-  },
-  {
-    category: 'POWER SYSTEMS & DEVICES',
-    keywords: ['Receptacle', 'Outlet', 'Plug', 'Motor', 'Device Box', 'Plaster Ring', 'Cover Plate']
-  },
-  {
-    category: 'TEST & COMMISSIONING',
-    keywords: ['Test', 'Megger', 'Verification', 'Label', 'Identification']
-  },
-  {
-    category: 'CIVIL & SITE WORKS',
-    keywords: ['Civil', 'Trench', 'Coring', 'Grout', 'Scanning', 'Excavation']
-  },
-  {
-    category: 'GENERAL',
-    keywords: ['Premium', 'OT', 'Shift', 'Mobilization', 'Cleanup', 'Consumable']
-  }
-];
+export { WBS_CATEGORIES };
+
 
 // In-memory learned mapping registry (in a production Vercel app, this can be backed by Vercel KV/Postgres)
 let userLearnedMappings: Record<string, string> = {};
@@ -130,23 +86,16 @@ export function classifyLineItem(description: string): string {
       });
     };
 
-    const feederConduitSizes = ['1 1/2"', '1-1/2"', '1.5"', '2"', '2 1/2"', '2-1/2"', '2.5"', '3"', '3 1/2"', '3-1/2"', '3.5"', '4"', '5"', '6"'];
-    const feederWireSizes = ['#4', '#3', '#2', '#1', '1/0', '2/0', '3/0', '4/0'];
-    const feederMCM = ['250', '300', '350', '400', '500', '600', '700', '750', '800', '900', '1000'];
-
-    const hasFeederConduit = matchConduitSize(feederConduitSizes, normDesc);
-    const hasFeederWire = matchWireSize(feederWireSizes, normDesc) || 
-                          feederMCM.some(s => new RegExp(`\\b${s}\\b`).test(normDesc));
+    const hasFeederConduit = matchConduitSize(FEEDER_CONDUIT_SIZES, normDesc);
+    const hasFeederWire = matchWireSize(FEEDER_WIRE_SIZES, normDesc) || 
+                          FEEDER_MCM_SIZES.some(s => new RegExp(`\\b${s}\\b`).test(normDesc));
     
     if (hasFeederConduit || hasFeederWire) {
       return 'FEEDERS & MAJOR RACEWAY';
     }
 
-    const branchConduitSizes = ['1/2"', '0.5"', '3/4"', '0.75"', '1"', '1 1/4"', '1-1/4"', '1.25"'];
-    const branchWireSizes = ['#14', '#12', '#10', '#8', '#6'];
-
-    const hasBranchConduit = matchConduitSize(branchConduitSizes, normDesc);
-    const hasBranchWire = matchWireSize(branchWireSizes, normDesc);
+    const hasBranchConduit = matchConduitSize(BRANCH_CONDUIT_SIZES, normDesc);
+    const hasBranchWire = matchWireSize(BRANCH_WIRE_SIZES, normDesc);
 
     if (hasBranchConduit || hasBranchWire) {
       return 'BRANCH WIRING & CONDUITS';
@@ -161,7 +110,7 @@ export function classifyLineItem(description: string): string {
     for (const kw of mapping.keywords) {
       const cleanKw = kw.toLowerCase();
       // Match short keywords as word boundaries so they don't trigger false positives inside other words
-      if (['fa', '105', 'led', 'ot', 'lug', 'rod', 'bond', 'bus', 'jb'].includes(cleanKw)) {
+      if (WORD_BOUNDARY_KEYWORDS.includes(cleanKw)) {
         const regex = new RegExp(`\\b${cleanKw}\\b`, 'i');
         if (regex.test(cleanDesc)) {
           return mapping.category;
