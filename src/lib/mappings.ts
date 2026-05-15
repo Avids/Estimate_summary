@@ -34,7 +34,7 @@ export const SYSTEM_MAPPINGS: { category: string; keywords: string[] }[] = [
   },
   {
     category: 'DISTRIBUTION',
-    keywords: ['Panel', 'Breaker', 'Transformer', 'Switchgear', 'Disconnect']
+    keywords: ['Panel', 'Breaker', 'Transformer', 'Switchgear', 'Disconnect','XMER']
   },
   {
     category: 'LIGHTING & CONTROLS',
