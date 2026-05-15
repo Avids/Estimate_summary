@@ -34,6 +34,7 @@ import {
   FEEDER_MCM_SIZES, 
   BRANCH_CONDUIT_SIZES, 
   BRANCH_WIRE_SIZES, 
+  BRANCH_ROUGH_IN_BOXES,
   WORD_BOUNDARY_KEYWORDS 
 } from './mappings';
 
@@ -59,7 +60,31 @@ export function classifyLineItem(description: string): string {
     return userLearnedMappings[cleanDesc];
   }
 
-  // 2. Branch vs Feeder priority logic
+  // 2. Large Enclosure / Infrastructure Check (>= 10" dimension)
+  const largeBoxMatch = cleanDesc.match(/\b(\d{2,})\s*x\s*(\d{2,})\b/i);
+  if (largeBoxMatch) {
+    const dim1 = parseInt(largeBoxMatch[1]);
+    const dim2 = parseInt(largeBoxMatch[2]);
+    if (dim1 >= 10 && dim2 >= 10) {
+      return 'JUNCTION BOXES & ENCLOSURES';
+    }
+  }
+
+  // 3. Small Box / Rough-in Check
+  for (const boxKw of BRANCH_ROUGH_IN_BOXES) {
+    const cleanBox = boxKw.toLowerCase();
+    if (WORD_BOUNDARY_KEYWORDS.includes(cleanBox)) {
+      if (new RegExp(`\\b${cleanBox}\\b`, 'i').test(cleanDesc)) {
+        return 'BRANCH WIRING & CONDUITS';
+      }
+    } else {
+      if (cleanDesc.includes(cleanBox)) {
+        return 'BRANCH WIRING & CONDUITS';
+      }
+    }
+  }
+
+  // 4. Branch vs Feeder priority logic
   const isBX = /\bbx\b/i.test(cleanDesc) || /\bac90\b/i.test(cleanDesc);
   if (isBX) return 'BRANCH WIRING & CONDUITS';
 
@@ -105,7 +130,7 @@ export function classifyLineItem(description: string): string {
     return 'BRANCH WIRING & CONDUITS';
   }
 
-  // 3. Hierarchy priority scan
+  // 5. Hierarchy priority scan
   for (const mapping of SYSTEM_MAPPINGS) {
     for (const kw of mapping.keywords) {
       const cleanKw = kw.toLowerCase();
@@ -123,7 +148,7 @@ export function classifyLineItem(description: string): string {
     }
   }
 
-  // 4. Default to Unmapped
+  // 6. Default to Unmapped
   return 'Unmapped';
 }
 
