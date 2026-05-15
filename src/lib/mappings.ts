@@ -26,7 +26,7 @@ export const SYSTEM_MAPPINGS: { category: string; keywords: string[] }[] = [
   },
   {
     category: 'SUPPORTS & FASTENERS',
-    keywords: ['Threaded Rod', 'Anchor', 'Spring Nut', 'Washer', 'Bolt', 'T-Rod']
+    keywords: ['Threaded Rod', 'Anchor', 'Spring Nut', 'Washer', 'Bolt', 'T-Rod', 'HEX NUT', '12GA CHNL']
   },
   {
     category: 'GROUNDING & BONDING',
@@ -34,7 +34,7 @@ export const SYSTEM_MAPPINGS: { category: string; keywords: string[] }[] = [
   },
   {
     category: 'DISTRIBUTION',
-    keywords: ['Panel', 'Breaker', 'Transformer', 'Switchgear', 'Disconnect','XMER']
+    keywords: ['Panel', 'Breaker', 'Transformer', 'Switchgear', 'Disconnect', 'XMER']
   },
   {
     category: 'LIGHTING & CONTROLS',
