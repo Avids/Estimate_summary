@@ -3,8 +3,23 @@
 import React, { useState } from 'react';
 import { Upload, CheckCircle, RefreshCw, AlertCircle, Layers, Database, Sparkles, Download, Check, BookOpen } from 'lucide-react';
 import { ParseResult, LineItem, WBS_CATEGORIES, aggregateEstimate, assignLearnedMapping } from '@/lib/engine';
+import { BRANCH_ROUGH_IN_BOXES, WORD_BOUNDARY_KEYWORDS } from '@/lib/mappings';
 import { motion, AnimatePresence } from 'framer-motion';
 import * as XLSX from 'xlsx';
+
+// Helper for UI box check
+const isSmallBox = (desc: string) => {
+  const cleanDesc = desc.trim().toLowerCase();
+  for (const boxKw of BRANCH_ROUGH_IN_BOXES) {
+    const cleanBox = boxKw.toLowerCase();
+    if (WORD_BOUNDARY_KEYWORDS.includes(cleanBox)) {
+      if (new RegExp(`\\b${cleanBox}\\b`, 'i').test(cleanDesc)) return true;
+    } else {
+      if (cleanDesc.includes(cleanBox)) return true;
+    }
+  }
+  return false;
+};
 
 // Mock sample items to test Feeder vs Branch sizing and other categories
 const MOCK_SAMPLE_ITEMS: LineItem[] = [
@@ -37,6 +52,9 @@ export default function Home() {
 
   // Manual Mapping state for Unmapped Tab
   const [selectedCategoryMap, setSelectedCategoryMap] = useState<Record<string, string>>({});
+
+  // UI toggle for Branch EA view
+  const [showEA, setShowEA] = useState(false);
 
   const handleFileUpload = async (uploadedFile: File) => {
     setIsLoading(true);
@@ -437,7 +455,22 @@ export default function Home() {
               </div>
 
               <div className="space-y-6">
-                {parseData.rollups.filter(r => r.itemCount > 0).map((rollup) => (
+                {parseData.rollups.filter(r => r.itemCount > 0).map((rollup) => {
+                  let isBranch = rollup.category === 'BRANCH WIRING & CONDUITS';
+                  let boxEA = 0;
+                  let conduitLF = 0;
+
+                  if (isBranch) {
+                    rollup.items.forEach(item => {
+                      if (isSmallBox(item.description)) {
+                        boxEA += item.quantity;
+                      } else {
+                        conduitLF += item.quantity;
+                      }
+                    });
+                  }
+
+                  return (
                   <div key={rollup.category} className="bg-slate-800/50 backdrop-blur-sm border border-slate-700 rounded-2xl overflow-hidden shadow-xl">
                     <div style={{ backgroundColor: '#37514E' }} className="px-6 py-4 flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-700">
                       <div className="flex items-center gap-3">
@@ -446,6 +479,19 @@ export default function Home() {
                       </div>
                       <div className="flex items-center gap-6 text-xs font-mono">
                         <span className="text-slate-300">Items: <span className="text-white font-bold">{rollup.itemCount}</span></span>
+                        
+                        {isBranch && (
+                          <span className="text-slate-300 flex items-center gap-2 bg-slate-900/40 px-2 py-1 rounded">
+                            Qty: <span className="text-white font-bold">{showEA ? `${boxEA.toLocaleString()} EA (Boxes)` : `${conduitLF.toLocaleString()} LF (Conduit)`}</span>
+                            <button 
+                              onClick={() => setShowEA(!showEA)}
+                              className="text-[9px] bg-slate-700 hover:bg-slate-600 text-teal-300 px-1.5 py-0.5 rounded ml-1 transition-colors"
+                            >
+                              Toggle {showEA ? 'LF' : 'EA'}
+                            </button>
+                          </span>
+                        )}
+
                         <span className="text-slate-300">Labor: <span className="text-teal-300 font-bold">{rollup.laborHours.toFixed(2)} hrs</span></span>
                         <span className="text-slate-300">Material: <span className="text-emerald-400 font-bold text-sm">${rollup.materialValue.toLocaleString(undefined, {minimumFractionDigits: 2})}</span></span>
                       </div>
